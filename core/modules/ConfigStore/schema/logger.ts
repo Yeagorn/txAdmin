@@ -38,4 +38,11 @@ export default {
         validator: rfsOptionValidator,
         fixer: SYM_FIXER_FATAL,
     }),
+    //http access logs
+    access: typeDefinedConfig({
+        name: 'Access Logs',
+        default: {},
+        validator: rfsOptionValidator,
+        fixer: SYM_FIXER_FATAL,
+    }),
 } as const;

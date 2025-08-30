@@ -6,6 +6,14 @@ export { default as perfChart } from './perfChart';
 export { default as playerDrops } from './playerDrops';
 export { default as systemLogs } from './systemLogs';
 
+export { default as accessLogs_get } from './accessLogs/get';
+export { default as accessLogs_page } from './accessLogs/page';
+export { default as accessLogs_download } from './accessLogs/download';
+export { default as accessLogs_stream } from './accessLogs/stream';
+export { default as accessLogs_internal } from './accessLogs/internal';
+export { default as ipBlocks_get } from './ipBlocks/get';
+export { default as ipBlocks_actions } from './ipBlocks/actions';
+
 export { default as auth_addMasterPin } from './authentication/addMasterPin.js';
 export { default as auth_addMasterCallback } from './authentication/addMasterCallback.js';
 export { default as auth_addMasterSave } from './authentication/addMasterSave.js';

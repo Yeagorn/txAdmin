@@ -94,7 +94,12 @@ export const getPublishVersion = (isOptional: boolean) => {
                     preReleaseExpiration: '0',
                 };
             } else {
-                throw new Error('No --tag found.');
+                // throw new Error('No --tag found.');
+                return {
+                    txVersion: '9.9.9-dev',
+                    isPreRelease: false,
+                    preReleaseExpiration: '0',
+                };
             }
         }
         const refRemoved = workflowRef.replace(/^(refs\/tags\/)?v/, '');

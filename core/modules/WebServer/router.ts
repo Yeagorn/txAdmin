@@ -37,6 +37,7 @@ export default () => {
     router.get('/legacy/whitelist', webAuthMw, routes.whitelist_page);
     router.get('/legacy/setup', webAuthMw, routes.setup_get);
     router.get('/legacy/deployer', webAuthMw, routes.deployer_stepper);
+    router.get('/legacy/accessLogs', webAuthMw, routes.accessLogs_page);
 
     //Authentication
     router.get('/auth/self', apiAuthMw, routes.auth_self);
@@ -90,6 +91,12 @@ export default () => {
     router.get('/systemLog/:scope', apiAuthMw, routes.systemLogs);
     router.get('/perfChartData/:thread', apiAuthMw, routes.perfChart);
     router.get('/playerDropsData', apiAuthMw, routes.playerDrops);
+    router.get('/accessLogs', apiAuthMw, routes.accessLogs_get);
+    router.get('/accessLogs/download', apiAuthMw, routes.accessLogs_download);
+    router.get('/accessLogs/stream', apiAuthMw, routes.accessLogs_stream);
+    router.get('/accessLogs/internal', apiAuthMw, routes.accessLogs_internal);
+    router.get('/ipBlocks', apiAuthMw, routes.ipBlocks_get);
+    router.post('/ipBlocks/:action', apiAuthMw, routes.ipBlocks_actions);
 
     /*
         FIXME: reorganizar TODAS rotas de logs, incluindo listagem e download

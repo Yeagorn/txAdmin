@@ -23,6 +23,7 @@ import { SessionMemoryStorage, koaSessMw, socketioSessMw } from './middlewares/s
 import checkRateLimit from './middlewares/globalRateLimiter';
 import checkHttpLoad from './middlewares/httpLoadMonitor';
 import cacheControlMw from './middlewares/cacheControlMw';
+import accessLogMw from './middlewares/accessLogMw';
 import fatalError from '@lib/fatalError';
 import { isProxy } from 'node:util/types';
 import serveStaticMw from './middlewares/serveStaticMw';
@@ -121,12 +122,14 @@ export default class WebServer {
             jsonLimit: '768kb',
         }));
 
-        //Custom stuff
-        this.sessionStore = new SessionMemoryStorage();
-        this.app.use(cacheControlMw);
-        this.app.use(koaSessMw(this.sessionCookieName, this.sessionStore));
-        this.app.use(ctxVarsMw);
-        this.app.use(ctxUtilsMw);
+    //Custom stuff
+    this.sessionStore = new SessionMemoryStorage();
+    // ctxVarsMw must run before accessLog and rate limiting so ctx.txVars.realIP exists
+    this.app.use(ctxVarsMw);
+    this.app.use(accessLogMw);
+    this.app.use(cacheControlMw);
+    this.app.use(koaSessMw(this.sessionCookieName, this.sessionStore));
+    this.app.use(ctxUtilsMw);
 
         //Setting up routes
         const txRouter = router();

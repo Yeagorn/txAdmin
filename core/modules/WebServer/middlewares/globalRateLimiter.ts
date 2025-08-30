@@ -46,6 +46,10 @@ setInterval(() => {
         minutesSinceLastAttack++;
         if (minutesSinceLastAttack > DDOS_COOLDOWN_MINUTES) {
             bannedIps.clear();
+            // Also clear auto blocks in the IP block manager
+            if (typeof txCore !== 'undefined' && txCore.ipBlockManager) {
+                txCore.ipBlockManager.clearAutoBlocks();
+            }
         }
     }
     httpRequestsCounter = 0;
@@ -85,6 +89,12 @@ const checkRateLimit = (remoteAddress: string) => {
         if (reqsCount > limit) {
             bannedIps.add(remoteAddress);
             bansPendingWarn.push(remoteAddress);
+            
+            // Also add to the IP block manager for persistent blocking
+            if (typeof txCore !== 'undefined' && txCore.ipBlockManager) {
+                txCore.ipBlockManager.autoBlockIP(remoteAddress, 'Rate limit exceeded - DDoS protection');
+            }
+            
             return false;
         }
         reqsPerIp.set(remoteAddress, reqsCount + 1);

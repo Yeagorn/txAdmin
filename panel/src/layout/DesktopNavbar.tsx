@@ -153,6 +153,13 @@ export default function DesktopNavbar() {
                             >
                                 Action Log
                             </HeaderMenuLink>
+                            <HeaderMenuLink
+                                className="w-36 justify-start"
+                                href="/system/access-logs"
+                                disabled={!hasPerm('txadmin.log.view')}
+                            >
+                                Access Logs & IP Blocking
+                            </HeaderMenuLink>
                         </NavigationMenuContent>
                     </NavigationMenuItem>
                 </NavigationMenuList>

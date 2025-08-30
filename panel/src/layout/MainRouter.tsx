@@ -17,6 +17,7 @@ import AddLegacyBanPage from "@/pages/AddLegacyBanPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import PlayerDropsPage from "@/pages/PlayerDropsPage/PlayerDropsPage";
 import SettingsPage from "@/pages/Settings/SettingsPage";
+import AccessLogsPage from "@/pages/AccessLogsPage";
 import { useAdminPerms } from "@/hooks/auth";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
@@ -83,6 +84,12 @@ const allRoutes: RouteType[] = [
         title: 'Action Log',
         permission: 'txadmin.log.view',
         Page: <SystemLogPage pageName="action" />
+    },
+    {
+        path: '/system/access-logs',
+        title: 'Access Logs & IP Blocking',
+        permission: 'txadmin.log.view',
+        Page: <AccessLogsPage />
     },
 
     //Server Routes
