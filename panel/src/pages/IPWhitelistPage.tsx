@@ -176,10 +176,6 @@ export default function IPWhitelistPage() {
       <div className="space-y-4">
 
         <Card>
-          <CardHeader>
-            <CardTitle>Admin IP Whitelist</CardTitle>
-            <CardDescription>IP addresses assigned to specific admin users</CardDescription>
-          </CardHeader>
           <CardContent>
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
