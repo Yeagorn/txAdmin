@@ -160,6 +160,13 @@ export default function DesktopNavbar() {
                             >
                                 Access Logs & IP Blocking
                             </HeaderMenuLink>
+                            <HeaderMenuLink
+                                className="w-36 justify-start"
+                                href="/system/ip-whitelist"
+                                disabled={!hasPerm('txadmin.log.view')}
+                            >
+                                IP Whitelist
+                            </HeaderMenuLink>
                         </NavigationMenuContent>
                     </NavigationMenuItem>
                 </NavigationMenuList>

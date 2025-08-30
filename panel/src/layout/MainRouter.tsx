@@ -18,6 +18,7 @@ import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import PlayerDropsPage from "@/pages/PlayerDropsPage/PlayerDropsPage";
 import SettingsPage from "@/pages/Settings/SettingsPage";
 import AccessLogsPage from "@/pages/AccessLogsPage";
+import IPWhitelistPage from "@/pages/IPWhitelistPage";
 import { useAdminPerms } from "@/hooks/auth";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
@@ -90,6 +91,12 @@ const allRoutes: RouteType[] = [
         title: 'Access Logs & IP Blocking',
         permission: 'txadmin.log.view',
         Page: <AccessLogsPage />
+    },
+    {
+        path: '/system/ip-whitelist',
+        title: 'IP Whitelist',
+        permission: 'txadmin.log.view',
+        Page: <IPWhitelistPage />
     },
 
     //Server Routes
