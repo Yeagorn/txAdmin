@@ -23,25 +23,43 @@ interface OverviewStats {
   totalRequests: number;
   uniqueIps: number;
   blockedRequests: number;
+  topIps: Array<{ ip: string; count: number; blocked: number; }>;
+  topPaths: Array<{ path: string; count: number; }>;
+  requestsByHour: Array<{ hour: number; count: number; blocked: number; }>;
+}
+
+interface SuspiciousActivity {
+  type: 'high_frequency' | 'failed_auth' | 'suspicious_paths' | 'blocked_requests';
+  ip: string;
+  count: number;
+  severity: 'low' | 'medium' | 'high';
+  details: string;
 }
 
 export default function AccessLogsPage() {
   const [logs, setLogs] = useState<AccessLogEntry[]>([]);
   const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [suspicious, setSuspicious] = useState<SuspiciousActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [ipFilter, setIpFilter] = useState('');
   const [pathFilter, setPathFilter] = useState('');
 
-  const apiGetLogs = useBackendApi<{ entries: AccessLogEntry[]; stats?: any; }>(
+  const apiGetLogs = useBackendApi<{ entries: AccessLogEntry[]; stats?: OverviewStats; suspicious?: SuspiciousActivity[]; }>(
     { method: 'GET', path: '/accessLogs' }
   );
   const apiIpBlocks = useBackendApi({ method: 'GET', path: '/ipBlocks' });
 
   const loadOverview = async () => {
     try {
-      const res = await apiGetLogs({ queryParams: { limit: '1' } });
+      const res = await apiGetLogs({ queryParams: { limit: '100' } });
       if (res && (res as any).stats) {
-        setStats((res as any).stats || null);
+        setStats((res as any).stats);
+      }
+      if (res && (res as any).suspicious) {
+        setSuspicious((res as any).suspicious);
+      }
+      if (res && (res as any).entries) {
+        setLogs((res as any).entries);
       }
     } catch (e) {
       console.error('Failed to load overview stats', e);
@@ -67,8 +85,6 @@ export default function AccessLogsPage() {
     window.location.href = '/accessLogs/download';
   };
 
-
-
   const [ipBlocks, setIpBlocks] = useState<Array<any>>([]);
   const loadIpBlocks = async () => {
     try {
@@ -76,6 +92,49 @@ export default function AccessLogsPage() {
       if (res && (res as any).entries) setIpBlocks((res as any).entries);
     } catch (e) {
       console.error('Failed to load IP blocks', e);
+    }
+  };
+
+  // Helper function to calculate method distribution from logs
+  const getMethodDistribution = () => {
+    const methods = logs.reduce((acc, log) => {
+      acc[log.method] = (acc[log.method] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const total = Object.values(methods).reduce((sum, count) => sum + count, 0);
+    return Object.entries(methods).map(([method, count]) => ({
+      method,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0
+    }));
+  };
+
+  // Helper function to calculate status code distribution from logs
+  const getStatusDistribution = () => {
+    const statuses = logs.reduce((acc, log) => {
+      if (log.statusCode) {
+        const category = Math.floor(log.statusCode / 100);
+        const key = `${category}xx`;
+        acc[key] = (acc[key] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const total = Object.values(statuses).reduce((sum, count) => sum + count, 0);
+    return Object.entries(statuses).map(([status, count]) => ({
+      status,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0
+    }));
+  };
+
+  const getSeverityColor = (severity: string): "default" | "destructive" | "secondary" | "outline" => {
+    switch (severity) {
+      case 'high': return 'destructive';
+      case 'medium': return 'outline';
+      case 'low': return 'secondary';
+      default: return 'default';
     }
   };
 
@@ -184,23 +243,27 @@ export default function AccessLogsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Top IPs</CardTitle>
-                <CardDescription>Most active IP addresses</CardDescription>
+                <CardDescription>Most active IP addresses (excluding localhost)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {/* Placeholder for top IPs - would come from backend stats */}
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">192.168.1.100</span>
-                    <span className="text-sm">42 requests</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">10.0.0.50</span>
-                    <span className="text-sm">28 requests</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">203.0.113.1</span>
-                    <span className="text-sm">15 requests</span>
-                  </div>
+                  {stats?.topIps?.filter(ipStat => ipStat.ip !== '127.0.0.1').slice(0, 5).map((ipStat, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="font-mono text-sm">{ipStat.ip}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm">{ipStat.count} requests</span>
+                        {ipStat.blocked > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {ipStat.blocked} blocked
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )) || (
+                    <div className="text-center text-muted-foreground py-4">
+                      No IP activity data available
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -311,40 +374,31 @@ export default function AccessLogsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Suspicious Activity</CardTitle>
-              <CardDescription>Potential security threats and anomalies</CardDescription>
+              <CardDescription>Potential security threats detected by the system</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="destructive">HIGH</Badge>
-                    <div>
-                      <p className="font-medium">Multiple failed authentication attempts</p>
-                      <p className="text-sm text-muted-foreground">IP: 203.0.113.50 - 15 attempts in 5 minutes</p>
+                {suspicious.filter(activity => activity.ip !== '127.0.0.1').map((activity, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <Badge variant={getSeverityColor(activity.severity)}>
+                        {activity.severity.toUpperCase()}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{activity.details}</p>
+                        <p className="text-sm text-muted-foreground">
+                          IP: {activity.ip} - {activity.count} occurrences ({activity.type.replace('_', ' ')})
+                        </p>
+                      </div>
                     </div>
+                    <Button size="sm">Block IP</Button>
                   </div>
-                  <Button size="sm">Block IP</Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="outline">MEDIUM</Badge>
-                    <div>
-                      <p className="font-medium">Unusual request patterns</p>
-                      <p className="text-sm text-muted-foreground">IP: 198.51.100.25 - Scanning common paths</p>
-                    </div>
+                ))}
+                {suspicious.filter(activity => activity.ip !== '127.0.0.1').length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    No suspicious activity detected in recent logs.
                   </div>
-                  <Button size="sm">Block IP</Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="secondary">LOW</Badge>
-                    <div>
-                      <p className="font-medium">High request frequency</p>
-                      <p className="text-sm text-muted-foreground">IP: 192.0.2.100 - 200 requests in 1 hour</p>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline">Monitor</Button>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -359,42 +413,20 @@ export default function AccessLogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span>GET</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full" style={{width: '80%'}}></div>
+                  {getMethodDistribution().map((method, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span>{method.method}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-32 bg-secondary rounded-full h-2">
+                          <div className="bg-primary h-2 rounded-full" style={{width: `${method.percentage}%`}}></div>
+                        </div>
+                        <span className="text-sm">{method.percentage}%</span>
                       </div>
-                      <span className="text-sm">80%</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>POST</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full" style={{width: '15%'}}></div>
-                      </div>
-                      <span className="text-sm">15%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>PUT</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full" style={{width: '3%'}}></div>
-                      </div>
-                      <span className="text-sm">3%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>DELETE</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full" style={{width: '2%'}}></div>
-                      </div>
-                      <span className="text-sm">2%</span>
-                    </div>
-                  </div>
+                  ))}
+                  {getMethodDistribution().length === 0 && (
+                    <div className="text-center text-muted-foreground py-4">No method data available</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -406,42 +438,30 @@ export default function AccessLogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span>2xx Success</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
+                  {getStatusDistribution().map((status, index) => {
+                    const getStatusColor = (statusCode: string) => {
+                      if (statusCode.startsWith('2')) return 'bg-green-500';
+                      if (statusCode.startsWith('3')) return 'bg-blue-500';
+                      if (statusCode.startsWith('4')) return 'bg-yellow-500';
+                      if (statusCode.startsWith('5')) return 'bg-red-500';
+                      return 'bg-gray-500';
+                    };
+                    
+                    return (
+                      <div key={index} className="flex justify-between items-center">
+                        <span>{status.status} {status.status.startsWith('2') ? 'Success' : status.status.startsWith('4') ? 'Client Error' : status.status.startsWith('5') ? 'Server Error' : 'Redirect'}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-secondary rounded-full h-2">
+                            <div className={`h-2 rounded-full ${getStatusColor(status.status)}`} style={{width: `${status.percentage}%`}}></div>
+                          </div>
+                          <span className="text-sm">{status.percentage}%</span>
+                        </div>
                       </div>
-                      <span className="text-sm">85%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>4xx Client Error</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-yellow-500 h-2 rounded-full" style={{width: '10%'}}></div>
-                      </div>
-                      <span className="text-sm">10%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>5xx Server Error</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-red-500 h-2 rounded-full" style={{width: '3%'}}></div>
-                      </div>
-                      <span className="text-sm">3%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>3xx Redirect</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-secondary rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '2%'}}></div>
-                      </div>
-                      <span className="text-sm">2%</span>
-                    </div>
-                  </div>
+                    );
+                  })}
+                  {getStatusDistribution().length === 0 && (
+                    <div className="text-center text-muted-foreground py-4">No status data available</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -453,26 +473,14 @@ export default function AccessLogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">/</span>
-                    <span className="text-sm">1,250 hits</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">/auth/self</span>
-                    <span className="text-sm">892 hits</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">/player/search</span>
-                    <span className="text-sm">445 hits</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">/accessLogs</span>
-                    <span className="text-sm">234 hits</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm">/perfChartData</span>
-                    <span className="text-sm">187 hits</span>
-                  </div>
+                  {stats?.topPaths?.slice(0, 10).map((pathStat, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="font-mono text-sm truncate max-w-xs">{pathStat.path}</span>
+                      <span className="text-sm">{pathStat.count} hits</span>
+                    </div>
+                  )) || (
+                    <div className="text-center text-muted-foreground py-4">No path data available</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -480,15 +488,26 @@ export default function AccessLogsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Requests Over Time</CardTitle>
-                <CardDescription>Hourly request distribution</CardDescription>
+                <CardDescription>Hourly request distribution (last 24h)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-end space-x-1 h-32">
-                  {Array.from({length: 24}, (_, i) => (
-                    <div key={i} className="flex-1 bg-secondary rounded-t" style={{
-                      height: `${Math.random() * 80 + 20}%`,
-                      backgroundColor: i === new Date().getHours() ? 'hsl(var(--primary))' : undefined
-                    }}></div>
+                  {stats?.requestsByHour?.map((hourStat, i) => {
+                    const maxCount = Math.max(...(stats?.requestsByHour?.map(h => h.count) || [1]));
+                    const height = maxCount > 0 ? (hourStat.count / maxCount) * 100 : 0;
+                    const currentHour = new Date().getHours();
+                    
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center">
+                        <div 
+                          className={`w-full rounded-t ${hourStat.hour === currentHour ? 'bg-primary' : 'bg-secondary'}`}
+                          style={{ height: `${Math.max(height, 5)}%` }}
+                          title={`${hourStat.hour}:00 - ${hourStat.count} requests${hourStat.blocked ? `, ${hourStat.blocked} blocked` : ''}`}
+                        ></div>
+                      </div>
+                    );
+                  }) || Array.from({length: 24}, (_, i) => (
+                    <div key={i} className="flex-1 bg-secondary rounded-t" style={{ height: '20%' }}></div>
                   ))}
                 </div>
                 <div className="mt-2 flex justify-between text-xs text-muted-foreground">
