@@ -18,6 +18,7 @@ import Database from '@modules/Database';
 import CacheStore from '@modules/CacheStore';
 import UpdateChecker from '@modules/UpdateChecker';
 import IPBlockManager from '@modules/IPBlockManager';
+import IPWhitelistManager from '@modules/IPWhitelistManager';
 const console = consoleFactory();
 
 
@@ -43,6 +44,7 @@ export type TxCoreType = {
     updateChecker: UpdateChecker;
     webServer: WebServer;
     ipBlockManager: IPBlockManager;
+    ipWhitelistManager: IPWhitelistManager;
 }
 
 export default function bootTxAdmin() {
@@ -92,6 +94,7 @@ export default function bootTxAdmin() {
     //High Priority (required for banner) 
     _txCore.adminStore = startModule(AdminStore);
     _txCore.ipBlockManager = new IPBlockManager(); // No config watching needed
+    _txCore.ipWhitelistManager = new IPWhitelistManager(); // No config watching needed
     _txCore.webServer = startModule(WebServer);
     _txCore.database = startModule(Database);
 

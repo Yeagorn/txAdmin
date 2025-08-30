@@ -97,6 +97,8 @@ export default () => {
     router.get('/accessLogs/internal', apiAuthMw, routes.accessLogs_internal);
     router.get('/ipBlocks', apiAuthMw, routes.ipBlocks_get);
     router.post('/ipBlocks/:action', apiAuthMw, routes.ipBlocks_actions);
+    router.get('/ipWhitelist', apiAuthMw, routes.ipWhitelist_get);
+    router.post('/ipWhitelist/:action', apiAuthMw, routes.ipWhitelist_actions);
 
     /*
         FIXME: reorganizar TODAS rotas de logs, incluindo listagem e download

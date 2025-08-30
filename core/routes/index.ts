@@ -13,6 +13,8 @@ export { default as accessLogs_stream } from './accessLogs/stream';
 export { default as accessLogs_internal } from './accessLogs/internal';
 export { default as ipBlocks_get } from './ipBlocks/get';
 export { default as ipBlocks_actions } from './ipBlocks/actions';
+export { default as ipWhitelist_get } from './ipWhitelist/get';
+export { default as ipWhitelist_actions } from './ipWhitelist/actions';
 
 export { default as auth_addMasterPin } from './authentication/addMasterPin.js';
 export { default as auth_addMasterCallback } from './authentication/addMasterCallback.js';
